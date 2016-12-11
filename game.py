@@ -16,44 +16,57 @@ visit_team = []
 visit_team_score = []
 
 for index, row in teams.iterrows():
-    team, url = row['team'], row['url']
+    team = row['team']
+    
+    # 檢查隊伍
     print(team)
     
     r = requests.get(BASE_URL.format(row['abbr_1'], year))
     content = r.text
     table = BeautifulSoup(content, 'html.parser').table
+    rows =  table.find_all('tr')[2:]
     
-    for row in table.find_all('tr')[2:]: 
-        columns = row.find_all('td')
-        
-        print(columns[1].find_all('a'))
-        
-        match_id.append(columns[2].a['href'].split('/id/')[1])
-        home = True if columns[1].li.text == 'vs' else False
-        other_team = columns[1].find_all('a')[1].text
-        score = columns[2].a.text.split(' ')[0].split('-')
-        won = True if columns[2].span.text == 'W' else False
+    
+    for row in rows: 
+        cols = row.find_all('td')
 
-       
-        home_team.append(team if home else other_team)
-        visit_team.append(team if not home else other_team)
-        d = datetime.strptime(columns[0].text, '%a, %b %d')
-        dates.append(date(year, d.month, d.day))
+        
+        try:
+            match_id.append(cols[2].find('a').get('href').split('/id/')[1])
+            
+            # 決定主客隊
+            home = True if cols[1].li.text == 'vs' else False
+            other_team = cols[1].find_all('a')[1].text
+            
+            won = True if cols[2].span.text == 'W' else False
+            score = cols[2].a.text.split(' ')[0].split('-')
+            # 決定主客隊分數
+            if home:
+                if won:
+                    home_team_score.append(score[0])
+                    visit_team_score.append(score[1])
+                else:
+                    home_team_score.append(score[1])
+                    visit_team_score.append(score[0])
+            else:
+                if won:
+                    home_team_score.append(score[1])
+                    visit_team_score.append(score[0])
+                else:
+                    home_team_score.append(score[0])
+                    visit_team_score.append(score[1])
 
-        if home:
-            if won:
-                home_team_score.append(score[0])
-                visit_team_score.append(score[1])
-            else:
-                home_team_score.append(score[1])
-                visit_team_score.append(score[0])
-        else:
-            if won:
-                home_team_score.append(score[1])
-                visit_team_score.append(score[0])
-            else:
-                home_team_score.append(score[0])
-                visit_team_score.append(score[1])
+
+            home_team.append(team if home else other_team)
+            visit_team.append(team if not home else other_team)
+            d = datetime.strptime(cols[0].text, '%a, %b %d')
+            dates.append(date(year, d.month, d.day))
+
+            
+                    
+        except Exception as e:
+            pass # Not all columns row are a game, is OK
+            print(e)
         
 
             
